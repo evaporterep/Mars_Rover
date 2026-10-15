@@ -1,13 +1,22 @@
-#include <Arduino.h>
+/*#include <Arduino.h>
 #include <Wire.h>
+#include <ESP32-TWAI-CAN.hpp>
 
 constexpr uint8_t SDA_PIN = 8;
 constexpr uint8_t SCL_PIN = 9;
+
+constexpr uint8_t CAN_TX = 4;
+constexpr uint8_t CAN_RX = 3;
+
+//constexpr uint8_t CAN_TX = 21;
+//constexpr uint8_t CAN_RX = 20;
 
 constexpr uint8_t SHT41_ADDR        = 0x44;  // I2C address (SHT41-AD1B)
 constexpr uint8_t CMD_MEASURE_HIGH  = 0xFD;  // high precision measurement
 constexpr uint8_t CMD_READ_SERIAL   = 0x89;  // read 32-bit serial number
 constexpr uint8_t CMD_SOFT_RESET    = 0x94;  // reset the sensor
+
+unsigned long lastSend = 0;
 
 //Used to validate that data wasnt corrupted
 uint8_t crc8(const uint8_t *data, size_t len) {
@@ -100,6 +109,23 @@ bool sht41Read(float &temp, float &humidity){
   return true;
 }
 
+void sendFrame(uint32_t id, const uint8_t *data, uint8_t length) {
+  CanFrame frame = { 0 };            // start with everything zeroed
+  frame.identifier       = id;       // message ID
+  frame.extd             = 0;        // 0 = standard 11-bit ID, 1 = extended 29-bit
+  frame.data_length_code = length;   // number of data bytes (0 to 8)
+
+  for (uint8_t i = 0; i < length; i++) {
+    frame.data[i] = data[i];
+  }
+
+  if (ESP32Can.writeFrame(frame)) {
+    Serial.println("Frame sent");
+  } else {
+    Serial.println("Send failed");
+  }
+}
+
 //-----------------------------------------------------------------------------------
 
 void setup() {
@@ -122,6 +148,19 @@ void setup() {
   } else {
     Serial.println("Could not read serial number (CRC or bus error).");
   }
+  
+
+  //CAN Setup Code
+
+  ESP32Can.setPins(CAN_TX, CAN_RX);
+  ESP32Can.setSpeed(ESP32Can.convertSpeed(250));  // 250 kbps
+
+  if (!ESP32Can.begin()) {
+    Serial.println("Starting CAN failed!");
+    while (1) delay(1000);
+  }
+
+
 }
 
 void loop() {
@@ -137,6 +176,25 @@ void loop() {
   } else {
     Serial.println("Read failed (no ACK, short read, or CRC mismatch).");
   }
+  
 
-  delay(2000);
+
+  //Listen for incoming CAN frames
+  CanFrame frame;
+  if (ESP32Can.readFrame(frame, 1000)) {   // wait up to 1000 ms
+    Serial.printf("ID 0x%03X, len %d\n", frame.identifier, frame.data_length_code);
+  } else {
+    Serial.println("No CAN frame received within timeout.");
+  }
+  
+
+
+  delay(60000); 
+  if (millis() - lastSend >= 1000) {
+    lastSend = millis();
+
+    uint8_t payload[] = { 0x01, 0xFF, 0x10 };
+    sendFrame(0x123, payload, sizeof(payload));
+  }
 }
+*/
