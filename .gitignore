@@ -14,8 +14,7 @@
 *.userosscache
 *.sln.docstates
 *.env
-*.pio
-platformio.ini
+
 
 
 
