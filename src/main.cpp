@@ -106,6 +106,7 @@ void setup() {
   Serial.begin(115200);
   delay(500);
 
+  //I2C Setup Code
   Wire.begin(SDA_PIN, SCL_PIN);
   Wire.setClock(400000);  // 400 kHz fast mode
 
@@ -126,6 +127,7 @@ void setup() {
 void loop() {
   float temp, humidity;
 
+  //Read temperature and humidity from the SHT41 sensor
   if (sht41Read(temp, humidity)) {
     Serial.print("Temperature: ");
     Serial.print(temp, 2);
